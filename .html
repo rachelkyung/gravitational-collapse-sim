@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>중력 붕괴 시뮬레이터</title>
+  <style>
+    body {
+      background: radial-gradient(ellipse at center, #0b0f1a 0%, #000000 100%);
+      color: white;
+      text-align: center;
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+    }
+    h1 { margin-top: 1rem; }
+    canvas {
+      background: #111;
+      display: block;
+      margin: 1rem auto;
+      border-radius: 12px;
+      border: 2px solid white;
+    }
+    button {
+      margin: 0.5rem;
+      padding: 0.7rem 1.2rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #444;
+      color: white;
+      cursor: pointer;
+    }
+    .info, .explanation {
+      max-width: 700px;
+      margin: 0 auto;
+      font-size: 1rem;
+      padding: 1rem;
+      line-height: 1.6;
+    }
+    .message {
+      margin-top: 1rem;
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #ff88ff;
+    }
+  </style>
+</head>
+<body>
+  <h1> 중력 붕괴 시뮬레이터</h1>
+  <div class="info">
+    <p>
+      별의 질량이 커지면 시공간이 깊게 휘어집니다. <br>
+      <strong>임계점을 넘으면 중력 붕괴</strong>가 일어나고, 주변 천체는 더 이상 탈출하지 못한 채 중심으로 끌려갑니다.
+    </p>
+    <button onclick="increaseMass()">질량 증가하기 </button>
+    <button onclick="reset()">초기화 </button>
+    <div class="message" id="collapseMessage"></div>
+  </div>
+
+  <canvas id="canvas" width="600" height="600"></canvas>
+
+  <div class="explanation">
+    <h2> 이 시뮬레이션은 어떤 과정을 보여줄까?</h2>
+    <ul>
+      <li><strong>정상 궤도 유지:</strong> 질량이 작을 때 주변 천체는 원형 궤도를 돕니다.</li>
+      <li><strong>중력 우물 심화:</strong> 질량이 증가하면서 중력의 영향으로 천체 궤도가 점점 작아집니다.</li>
+      <li><strong>임계 질량 도달:</strong> 특정 질량을 넘으면 별이 블랙홀처럼 붕괴하고, 주변 천체는 중심으로 빨려 들어갑니다.</li>
+      <li><strong>탈출 불가:</strong> 이 시점부터 주변 천체는 탈출 속도를 넘지 못해 완전히 붕괴됩니다.</li>
+    </ul>
+    <p>이 시뮬레이션은 별의 질량에 따른 <strong>중력 붕괴의 시각화</strong>를 통해 블랙홀의 탄생을 직관적으로 이해할 수 있도록 돕습니다.</p>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const center = { x: 300, y: 300 };
+    let mass = 50;
+    let collapsed = false;
+    const collapseThreshold = 180;
+    const balls = [];
+
+    function reset() {
+      mass = 50;
+      collapsed = false;
+      document.getElementById("collapseMessage").textContent = "";
+      balls.length = 0;
+      const names = ["지구", "화성", "목성", "토성", "천왕성", "수성", "금성", "해왕성"];
+      for (let i = 0; i < names.length; i++) {
+        balls.push({
+          name: names[i],
+          angle: Math.random() * Math.PI * 2,
+          radius: 100 + Math.random() * 100,
+          speed: 0.008 + Math.random() * 0.005,
+          size: 4,
+          collapsing: false
+        });
+      }
+    }
+
+    function increaseMass() {
+      if (!collapsed) {
+        mass += 20;
+        if (mass >= collapseThreshold) {
+          collapsed = true;
+          document.getElementById("collapseMessage").textContent = "붕괴 발생! 이 별은 블랙홀이 되었습니다.";
+        }
+      }
+    }
+
+    function drawWell() {
+      const gradient = ctx.createRadialGradient(center.x, center.y, 10, center.x, center.y, collapsed ? 350 : mass * 2);
+      gradient.addColorStop(0, collapsed ? "#8800ff" : "#00f");
+      gradient.addColorStop(1, "transparent");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, collapsed ? 350 : mass * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (collapsed) {
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "purple";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawWell();
+
+      balls.forEach(ball => {
+        if (collapsed || ball.collapsing) {
+          ball.collapsing = true;
+          ball.radius -= 2 + Math.random();
+          if (ball.radius < 5) ball.radius = 0;
+        } else {
+          ball.angle += ball.speed + mass * 0.00002;
+          ball.radius -= mass * 0.00005;
+          if (ball.radius < 20) ball.radius = 20;
+        }
+
+        const x = center.x + ball.radius * Math.cos(ball.angle);
+        const y = center.y + ball.radius * Math.sin(ball.angle);
+
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(x, y, ball.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#aaa";
+        ctx.font = "10px Arial";
+        ctx.fillText(ball.name, x + 5, y);
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    reset();
+    animate();
+  </script>
+</body>
+</html>
